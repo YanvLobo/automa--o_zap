@@ -1,0 +1,221 @@
+/* Paleta herdada do VirtualZap (preto + vermelho da marca) */
+:root{
+  --preto:#0a0a0a;
+  --card:#161616;
+  --card-alto:#1c1c1c;
+  --borda:#2a2a2a;
+  --marca:#e5252e;
+  --marca-hover:#ff3b43;
+  --branco:#f5f5f5;
+  --texto:#9a9a9a;
+  --alerta:#ff5c5c;
+  --ok:#4ade80;
+  --azul:#5aa9ff;
+  --ambar:#ffb84d;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--preto); color:var(--branco);
+  font-family:"Segoe UI",system-ui,-apple-system,sans-serif; font-size:14px;
+}
+button{font-family:inherit}
+
+/* ------------------------------- TOPO ------------------------------- */
+.topo{
+  display:flex; align-items:center; justify-content:space-between;
+  gap:16px; padding:18px 24px 14px; flex-wrap:wrap;
+}
+.marca{font-size:22px; font-weight:700}
+.marca .v{color:var(--marca)} .marca .z{color:var(--branco)}
+.marca em{font-style:normal; color:var(--texto); font-size:13px; font-weight:600; letter-spacing:.14em; margin-left:8px}
+.faixa{height:3px; background:var(--marca); margin:0 24px}
+.acoes{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+
+.chip{
+  background:var(--card); border:1px solid var(--borda); color:var(--texto);
+  padding:6px 10px; border-radius:999px; font-size:12px; white-space:nowrap;
+}
+.chip.ok{color:var(--ok); border-color:#1e3d2a}
+.chip.ruim{color:var(--alerta); border-color:#3d1e1e}
+
+.btn{
+  background:var(--card); color:var(--branco); border:1px solid var(--borda);
+  padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.btn:hover{background:var(--card-alto); border-color:#3a3a3a}
+.btn-cheio{background:var(--marca); border-color:var(--marca); color:#fff}
+.btn-cheio:hover{background:var(--marca-hover); border-color:var(--marca-hover)}
+.btn-linha{color:var(--marca); border-color:#3a1f21}
+.btn-linha:hover{color:var(--marca-hover)}
+.btn:disabled{opacity:.5; cursor:not-allowed}
+.btn-pequeno{padding:5px 9px; font-size:12px}
+
+/* ----------------------------- MÉTRICAS ----------------------------- */
+.metricas{display:flex; gap:12px; padding:16px 24px 4px; flex-wrap:wrap}
+.metrica{
+  background:var(--card); border:1px solid var(--borda); border-radius:10px;
+  padding:12px 16px; min-width:130px;
+}
+.metrica .n{font-size:24px; font-weight:700; line-height:1.1}
+.metrica .r{color:var(--texto); font-size:11px; text-transform:uppercase; letter-spacing:.08em; margin-top:4px}
+.metrica.destaque .n{color:var(--alerta)}
+
+/* ------------------------------ FILTROS ----------------------------- */
+.filtros{display:flex; align-items:center; gap:14px; padding:14px 24px; flex-wrap:wrap}
+.campo{
+  background:var(--card); border:1px solid var(--borda); color:var(--branco);
+  padding:9px 12px; border-radius:8px; min-width:280px; font-size:13px; font-family:inherit;
+}
+.campo:focus{outline:none; border-color:var(--marca)}
+textarea.campo{width:100%; min-height:110px; resize:vertical; line-height:1.5}
+.check{color:var(--texto); font-size:13px; display:flex; align-items:center; gap:6px; cursor:pointer}
+.campo.mini-num{min-width:auto; width:56px; padding:6px 8px; text-align:center}
+.dica{color:#6a6a6a; font-size:12px}
+.dica.dir{margin-left:auto}
+
+/* ------------------------------ KANBAN ------------------------------ */
+.kanban{
+  display:grid; grid-template-columns:repeat(4,minmax(260px,1fr));
+  gap:14px; padding:8px 24px 40px; align-items:start; overflow-x:auto;
+}
+@media (max-width:1100px){ .kanban{grid-template-columns:repeat(2,minmax(240px,1fr))} }
+@media (max-width:640px){ .kanban{grid-template-columns:1fr} }
+
+.coluna{
+  background:#101010; border:1px solid var(--borda); border-radius:12px;
+  padding:12px; min-height:180px; transition:border-color .15s,background .15s;
+}
+.coluna.alvo{border-color:var(--marca); background:#141010}
+.coluna-topo{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+
+/* Rolagem vertical dentro da etapa: até 7 leads cresce normal; acima disso, a
+   altura trava e só o corpo da coluna rola (o resto da página fica parado). */
+.coluna-corpo.rolavel{overflow-y:auto; padding-right:6px; margin-right:-4px}
+.coluna-corpo.rolavel::-webkit-scrollbar{width:8px}
+.coluna-corpo.rolavel::-webkit-scrollbar-track{background:transparent}
+.coluna-corpo.rolavel::-webkit-scrollbar-thumb{background:var(--borda); border-radius:8px}
+.coluna-corpo.rolavel::-webkit-scrollbar-thumb:hover{background:#3a3a3a}
+.coluna-corpo.rolavel{scrollbar-width:thin; scrollbar-color:var(--borda) transparent}
+.coluna-titulo{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase}
+.coluna-contador{background:var(--card); border:1px solid var(--borda); color:var(--texto);
+  border-radius:999px; padding:2px 9px; font-size:11px}
+.c-novo .coluna-titulo{color:var(--azul)}
+.c-aguardando .coluna-titulo{color:var(--ambar)}
+.c-respondeu .coluna-titulo{color:var(--ok)}
+.c-optout .coluna-titulo{color:var(--texto)}
+
+.lead{
+  background:var(--card); border:1px solid var(--borda); border-left:3px solid var(--borda);
+  border-radius:9px; padding:11px 12px; margin-bottom:9px; cursor:grab;
+  transition:border-color .15s,transform .1s,background .15s;
+}
+.lead:hover{background:var(--card-alto)}
+.lead:active{cursor:grabbing; transform:scale(.99)}
+.lead.arrastando{opacity:.4}
+.lead.esfriando{
+  border-color:#5a1f22; border-left-color:var(--alerta);
+  background:linear-gradient(180deg,#1d1213,#161616);
+}
+.lead-nome{font-weight:600; margin-bottom:3px; word-break:break-word}
+.lead-tel{color:var(--texto); font-size:12px; font-family:Consolas,monospace}
+.lead-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:11px; color:var(--texto)}
+.tag{background:#1f1f1f; border:1px solid var(--borda); border-radius:5px; padding:2px 7px}
+.tag.vermelha{color:var(--alerta); border-color:#4a1f22; background:#1d1213}
+.tag.verde{color:var(--ok); border-color:#1e3d2a}
+.lead-acoes{display:flex; gap:6px; margin-top:9px; opacity:0; transition:opacity .15s}
+.lead:hover .lead-acoes{opacity:1}
+
+/* ------------------------------- MODAL ------------------------------- */
+.modal{
+  position:fixed; inset:0; background:rgba(0,0,0,.75); display:flex;
+  align-items:flex-start; justify-content:center; padding:60px 20px; z-index:50; overflow-y:auto;
+}
+.modal.oculto,.toast.oculto{display:none}
+.modal-caixa{
+  background:var(--card); border:1px solid var(--borda); border-radius:14px;
+  padding:24px; width:100%; max-width:680px; position:relative;
+}
+.modal-caixa h2{margin:0 0 4px; font-size:18px}
+.modal-caixa h2 .marca-cor{color:var(--marca)}
+.modal-caixa p.sub{color:var(--texto); font-size:13px; margin:0 0 18px}
+.fechar{
+  position:absolute; top:14px; right:14px; background:none; border:none;
+  color:var(--texto); font-size:16px; cursor:pointer;
+}
+.fechar:hover{color:var(--marca)}
+.rotulo{display:block; color:var(--texto); font-size:11px; text-transform:uppercase;
+  letter-spacing:.08em; margin:16px 0 6px; font-weight:600}
+select.campo{min-width:200px}
+.linha-botoes{display:flex; gap:10px; margin-top:20px}
+
+.passo{background:#101010; border:1px solid var(--borda); border-radius:10px; padding:12px; margin-bottom:10px}
+.passo-topo{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+.passo-titulo{font-size:12px; font-weight:700; color:var(--marca); letter-spacing:.06em}
+.passo textarea{min-height:80px}
+.intervalo{display:flex; align-items:center; gap:8px; margin-top:8px; color:var(--texto); font-size:12px}
+.intervalo input{width:80px; background:var(--card); border:1px solid var(--borda);
+  color:var(--branco); border-radius:6px; padding:6px 8px; font-family:inherit}
+
+.historico{max-height:340px; overflow-y:auto; margin-top:8px}
+.msg{border-radius:8px; padding:9px 11px; margin-bottom:8px; font-size:13px; line-height:1.45}
+.msg.saida{background:#12181f; border:1px solid #1e2a38; margin-right:36px}
+.msg.entrada{background:#101a12; border:1px solid #1e3d2a; margin-left:36px}
+.msg.falha{background:#1d1213; border:1px solid #4a1f22}
+.msg .quando{display:block; color:#6a6a6a; font-size:10px; margin-top:5px}
+
+.vazio{color:#5a5a5a; font-size:12px; text-align:center; padding:18px 8px; font-style:italic}
+
+/* ------------------------------- TOAST ------------------------------- */
+.toast{
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--card); border:1px solid var(--marca); color:var(--branco);
+  padding:12px 20px; border-radius:9px; z-index:60; font-size:13px;
+  box-shadow:0 8px 28px rgba(0,0,0,.6);
+}
+.toast.erro{border-color:var(--alerta); color:var(--alerta)}
+
+/* --------------------------- TAGS / ETIQUETAS --------------------------- */
+.filtro-tags{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.pilula{
+  border:1px solid var(--borda); border-radius:999px; padding:3px 10px;
+  font-size:11px; cursor:pointer; color:var(--branco); background:var(--card);
+  display:inline-flex; align-items:center; gap:5px; user-select:none;
+}
+.pilula .ponto{width:8px; height:8px; border-radius:50%; display:inline-block}
+.pilula.ativa{border-color:var(--branco); box-shadow:0 0 0 1px var(--branco) inset}
+.pilula.mini{padding:2px 8px; font-size:10px; cursor:default}
+.lead-tags{display:flex; gap:4px; flex-wrap:wrap; margin-top:7px}
+
+/* progresso da sequência */
+.progresso{display:flex; gap:4px; margin-top:9px; align-items:center; flex-wrap:wrap}
+.bolinha{width:9px; height:9px; border-radius:50%; background:#333; border:1px solid var(--borda)}
+.bolinha.feita{background:var(--ok); border-color:var(--ok)}
+.bolinha.atual{background:var(--ambar); border-color:var(--ambar); box-shadow:0 0 0 2px #3a2c11}
+.progresso .rot{font-size:10px; color:var(--texto); margin-left:4px}
+.estado-auto{font-size:10px; padding:1px 7px; border-radius:5px; border:1px solid var(--borda)}
+.estado-executando{color:var(--ok); border-color:#1e3d2a}
+.estado-pausada{color:var(--ambar); border-color:#3d2f14}
+.estado-finalizada{color:var(--azul); border-color:#1e2a38}
+.estado-cancelada{color:var(--texto)}
+.estado-parada{color:var(--texto)}
+.proxima{font-size:10px; color:var(--texto); margin-top:4px}
+
+/* linhas de gestão (etapas, tags, automações, tarefas) */
+.item-lista{
+  display:flex; align-items:center; gap:10px; background:#101010;
+  border:1px solid var(--borda); border-radius:9px; padding:9px 11px; margin-bottom:8px;
+}
+.item-lista .grip{cursor:grab; color:#555}
+.item-lista.arrastando{opacity:.4}
+.item-lista input.mini,.item-lista select.mini{
+  background:var(--card); border:1px solid var(--borda); color:var(--branco);
+  border-radius:6px; padding:5px 7px; font-family:inherit; font-size:12px;
+}
+.item-lista .cresce{flex:1}
+.cor-input{width:34px; height:28px; padding:0; border:1px solid var(--borda);
+  background:var(--card); border-radius:6px; cursor:pointer}
+.badge-sistema{font-size:9px; color:var(--texto); border:1px solid var(--borda);
+  border-radius:4px; padding:1px 5px; text-transform:uppercase}
+.tarefa-feita{opacity:.5; text-decoration:line-through}

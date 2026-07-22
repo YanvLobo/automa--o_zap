@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualZap CRM</title>
+<link rel="stylesheet" href="/static/painel.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca"><span class="v">Virtual</span><span class="z">Zap</span> <em>CRM</em></div>
+  <div class="acoes">
+    <span id="chip-canal" class="chip">canal: —</span>
+    <span id="chip-worker" class="chip">worker: —</span>
+    <span id="chip-chatwoot" class="chip">chatwoot: —</span>
+    <button id="btn-worker" class="btn">▶ Ligar funil</button>
+    <button id="btn-ciclo" class="btn btn-linha">⚡ Disparar agora</button>
+    <button id="btn-add" class="btn btn-cheio">+ Leads</button>
+    <button id="btn-seq" class="btn btn-linha">✎ Sequências</button>
+    <button id="btn-etapas" class="btn btn-linha">☰ Etapas</button>
+    <button id="btn-tags" class="btn btn-linha">🏷 Etiquetas</button>
+    <button id="btn-tarefas" class="btn btn-linha">✔ Tarefas</button>
+    <button id="btn-sync" class="btn btn-linha">🔄 Chatwoot</button>
+  </div>
+</header>
+<div class="faixa"></div>
+
+<section class="metricas" id="metricas"></section>
+
+<section class="filtros">
+  <input id="busca" class="campo" placeholder="Buscar por nome ou telefone…" autocomplete="off">
+  <label class="check"><input type="checkbox" id="so-alerta"> Só os que estão esfriando</label>
+  <label class="check">Intervalo entre envios:
+    <select id="intervalo-envio" class="campo" style="min-width:auto">
+      <option value="10">10 s</option>
+      <option value="30">30 s</option>
+      <option value="60">1 min</option>
+      <option value="120">2 min</option>
+      <option value="__custom">personalizado…</option>
+    </select>
+  </label>
+  <label class="check" title="Envia esta quantidade e faz uma pausa automática antes do próximo lote">
+    Lote: <input id="lote-tamanho" class="campo mini-num" type="number" min="1" value="30"> msgs ·
+    pausa <input id="lote-pausa" class="campo mini-num" type="number" min="0" value="10"> min
+  </label>
+  <div id="filtro-tags" class="filtro-tags"></div>
+  <span class="dica">Arraste os cards entre as colunas para mudar a etapa.</span>
+  <span id="ultimo-ciclo" class="dica dir"></span>
+</section>
+
+<main id="kanban" class="kanban"></main>
+
+<!-- ------------------------------- MODAIS ------------------------------- -->
+<div id="modal" class="modal oculto">
+  <div class="modal-caixa">
+    <button class="fechar" data-fechar>✕</button>
+    <div id="modal-conteudo"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast oculto"></div>
+
+<script src="/static/painel.js"></script>
+</body>
+</html>

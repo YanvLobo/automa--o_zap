@@ -1,0 +1,14 @@
+# Proxy reverso com HTTPS automático (Let's Encrypt).
+# A Evolution fica aberta no seu domínio; o painel do CRM fica protegido por senha.
+
+{$EVOLUTION_DOMINIO} {
+	reverse_proxy evolution:8080
+}
+
+{$CRM_DOMINIO} {
+	# Painel do CRM protegido por usuário/senha (basic auth).
+	basicauth {
+		{$CRM_USUARIO} {$CRM_SENHA_HASH}
+	}
+	reverse_proxy crm:8765
+}

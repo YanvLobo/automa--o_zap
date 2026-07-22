@@ -1,0 +1,106 @@
+# VirtualZap CRM + Evolution API — pilha completa para VPS.
+#
+# Sobe: Postgres, Redis, Evolution API, o CRM e o Caddy (proxy + HTTPS automático).
+# O CRM fala com a Evolution pela rede interna (http://evolution:8080) e a Evolution
+# chama o webhook do CRM também internamente (http://crm:8765) — nada de webhook
+# exposto na internet.
+#
+# Antes de subir, copie deploy/.env.deploy.example para deploy/.env e preencha.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [interna]
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks: [interna]
+
+  evolution:
+    image: evoapicloud/evolution-api:latest
+    restart: always
+    depends_on: [postgres, redis]
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_PASSWORD}@postgres:5432/evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+      # URL pública da própria Evolution (usada nas telas/QR)
+      SERVER_URL: https://${EVOLUTION_DOMINIO}
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks: [interna]
+
+  crm:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: always
+    depends_on: [evolution]
+    environment:
+      CRM_CANAL: evolution
+      EVOLUTION_URL: http://evolution:8080
+      EVOLUTION_INSTANCIA: ${EVOLUTION_INSTANCIA}
+      EVOLUTION_APIKEY: ${EVOLUTION_APIKEY}
+      EVOLUTION_VERSAO: v2
+      # Webhook interno — a Evolution chama o CRM pela rede do Docker
+      CRM_WEBHOOK_URL: http://crm:8765/webhook/evolution
+      CRM_WEBHOOK_TOKEN: ${CRM_WEBHOOK_TOKEN}
+      CRM_WORKER_AUTOSTART: "true"
+      CRM_LOTE_MAXIMO: "30"
+      CRM_LOTE_PAUSA_MINUTOS: "10"
+      CRM_JANELA_INICIO: "8"
+      CRM_JANELA_FIM: "20"
+      # Chatwoot (opcional — preencha em deploy/.env se for usar)
+      CHATWOOT_URL: ${CHATWOOT_URL:-}
+      CHATWOOT_ACCOUNT_ID: ${CHATWOOT_ACCOUNT_ID:-}
+      CHATWOOT_API_KEY: ${CHATWOOT_API_KEY:-}
+    volumes:
+      - crm_data:/data
+    networks: [interna]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    depends_on: [evolution, crm]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      EVOLUTION_DOMINIO: ${EVOLUTION_DOMINIO}
+      CRM_DOMINIO: ${CRM_DOMINIO}
+      CRM_USUARIO: ${CRM_USUARIO}
+      CRM_SENHA_HASH: ${CRM_SENHA_HASH}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [interna]
+
+networks:
+  interna:
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:
+  crm_data:
+  caddy_data:
+  caddy_config:

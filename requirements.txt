@@ -1,0 +1,10 @@
+# --- App desktop já existente (abas WhatsApp e Email) ---
+selenium>=4.20
+webdriver-manager>=4.0
+
+# --- CRM (funil, painel, webhook) ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+apscheduler>=3.10
+httpx>=0.27
+python-multipart>=0.0.9

@@ -1,0 +1,25 @@
+# Segredos — NUNCA versionar
+.env
+deploy/.env
+optout_extra.txt
+
+# Dados pessoais (telefones de envios antigos)
+PyWhatKit_DB.txt
+
+# Banco de dados do CRM
+crm_leads.db
+crm_leads.db-wal
+crm_leads.db-shm
+*.db
+
+# Perfil do navegador (WhatsApp Web) e build
+perfil_whatsapp/
+build/
+dist/
+__pycache__/
+*.pyc
+
+# Ambientes virtuais
+venv/
+.venv/
+env/

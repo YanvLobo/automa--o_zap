@@ -1,0 +1,7 @@
+# Dependências do CRM rodando como servidor (VPS/Docker) — sem Selenium/Tkinter.
+# Para o app desktop completo, use requirements.txt.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+apscheduler>=3.10
+httpx>=0.27
+python-multipart>=0.0.9
