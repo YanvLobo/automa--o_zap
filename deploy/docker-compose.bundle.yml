@@ -1,0 +1,86 @@
+# VirtualZap CRM + Evolution API — versão de TESTE (sem domínio, sem HTTPS).
+#
+# Feita para funcionar de primeira pela interface da Hostinger ("implementar via
+# URL do GitHub"): não precisa de arquivo .env nem de domínio. Todos os valores
+# já têm um padrão embutido.
+#
+# Depois do deploy você acessa:
+#   Evolution (QR Code):  http://SEU_IP_DA_VPS:8080/manager
+#   Painel do CRM:        http://SEU_IP_DA_VPS:8765
+#
+# ⚠️ É uma versão de TESTE: o painel fica sem senha e sem HTTPS. Assim que estiver
+# funcionando, troque para deploy/docker-compose.prod.yml (com domínio + senha +
+# cadeado). Antes de usar com um número real de produção, troque EVOLUTION_APIKEY.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-virtualzap_pg}
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [interna]
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks: [interna]
+
+  evolution:
+    image: evoapicloud/evolution-api:latest
+    restart: always
+    depends_on: [postgres, redis]
+    ports:
+      - "8080:8080"
+    environment:
+      AUTHENTICATION_API_KEY: ${EVOLUTION_APIKEY:-troque-esta-chave-virtualzap}
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:${POSTGRES_PASSWORD:-virtualzap_pg}@postgres:5432/evolution
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_LOCAL_ENABLED: "false"
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks: [interna]
+
+  crm:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: always
+    depends_on: [evolution]
+    ports:
+      - "8765:8765"
+    environment:
+      CRM_CANAL: evolution
+      EVOLUTION_URL: http://evolution:8080
+      EVOLUTION_INSTANCIA: ${EVOLUTION_INSTANCIA:-virtualzap}
+      EVOLUTION_APIKEY: ${EVOLUTION_APIKEY:-troque-esta-chave-virtualzap}
+      EVOLUTION_VERSAO: v2
+      # Webhook interno — a Evolution chama o CRM pela rede do Docker
+      CRM_WEBHOOK_URL: http://crm:8765/webhook/evolution
+      CRM_WORKER_AUTOSTART: "true"
+      CRM_LOTE_MAXIMO: "30"
+      CRM_LOTE_PAUSA_MINUTOS: "10"
+    volumes:
+      - crm_data:/data
+    networks: [interna]
+
+networks:
+  interna:
+
+volumes:
+  postgres_data:
+  redis_data:
+  evolution_instances:
+  crm_data:
