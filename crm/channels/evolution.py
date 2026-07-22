@@ -12,10 +12,18 @@ import logging
 
 import httpx
 
-from .. import config
+from .. import config, db
 from .base import Canal, ResultadoEnvio
 
 log = logging.getLogger("crm.canal.evolution")
+
+
+def _limpar_url(url: str) -> str:
+    """Remove barra final e um eventual '/manager' que o usuário cole por engano."""
+    u = (url or "").strip().rstrip("/")
+    if u.endswith("/manager"):
+        u = u[: -len("/manager")]
+    return u.rstrip("/")
 
 
 class CanalEvolution(Canal):
@@ -23,10 +31,11 @@ class CanalEvolution(Canal):
     recebe_respostas = True
 
     def __init__(self, url=None, instancia=None, apikey=None, versao=None):
-        self.url = (url or config.EVOLUTION_URL).rstrip("/")
-        self.instancia = instancia or config.EVOLUTION_INSTANCIA
-        self.apikey = apikey or config.EVOLUTION_APIKEY
-        self.versao = (versao or config.EVOLUTION_VERSAO).lower()
+        # Prioridade: argumento > configuração salva no painel (banco) > .env
+        self.url = _limpar_url(url or db.obter_config("evolution_url") or config.EVOLUTION_URL)
+        self.instancia = instancia or db.obter_config("evolution_instancia") or config.EVOLUTION_INSTANCIA
+        self.apikey = apikey or db.obter_config("evolution_apikey") or config.EVOLUTION_APIKEY
+        self.versao = (versao or db.obter_config("evolution_versao") or config.EVOLUTION_VERSAO).lower()
         self._cliente = httpx.Client(timeout=30, headers={"apikey": self.apikey})
 
     # ------------------------------------------------------------------ #

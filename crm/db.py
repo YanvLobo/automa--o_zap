@@ -238,6 +238,12 @@ CREATE TABLE IF NOT EXISTS sync_state (
     atualizado_em  TEXT NOT NULL DEFAULT ''
 );
 
+CREATE TABLE IF NOT EXISTS configuracoes (
+    chave         TEXT PRIMARY KEY,   -- 'evolution_url', 'evolution_apikey', ...
+    valor         TEXT NOT NULL DEFAULT '',
+    atualizado_em TEXT NOT NULL DEFAULT ''
+);
+
 CREATE INDEX IF NOT EXISTS idx_leads_status   ON leads(status_funil);
 CREATE INDEX IF NOT EXISTS idx_leads_etiqueta ON leads(etiqueta);
 CREATE INDEX IF NOT EXISTS idx_leads_cw       ON leads(chatwoot_contact_id);
@@ -894,6 +900,35 @@ def concluir_tarefa(tarefa_id: int, feito=True) -> None:
 
 
 # ============================== SYNC STATE =================================
+
+# ============================ CONFIGURAÇÕES ================================
+# Guardadas no banco (persistem no volume) e editáveis pelo painel — servem para
+# configurar a Evolution sem mexer em .env nem terminal.
+
+def obter_config(chave: str, padrao: str = "") -> str:
+    with _lock, conectar() as con:
+        linha = con.execute("SELECT valor FROM configuracoes WHERE chave = ?", (chave,)).fetchone()
+    return linha["valor"] if linha and linha["valor"] != "" else padrao
+
+
+def obter_configs() -> dict:
+    with _lock, conectar() as con:
+        linhas = con.execute("SELECT chave, valor FROM configuracoes").fetchall()
+    return {l["chave"]: l["valor"] for l in linhas}
+
+
+def salvar_config(dados: dict) -> None:
+    ts = agora_iso()
+    with _lock, conectar() as con:
+        for chave, valor in dados.items():
+            con.execute(
+                "INSERT INTO configuracoes (chave, valor, atualizado_em) VALUES (?,?,?) "
+                "ON CONFLICT(chave) DO UPDATE SET valor = excluded.valor, "
+                "atualizado_em = excluded.atualizado_em",
+                (chave, "" if valor is None else str(valor), ts),
+            )
+        con.commit()
+
 
 def obter_sync(recurso: str) -> str:
     with _lock, conectar() as con:

@@ -599,6 +599,60 @@ async function modalTarefas() {
   });
 }
 
+// ---- Evolution (configuração sem terminal) ----
+async function modalEvolution() {
+  const cfg = await api("/api/config/evolution");
+  const st = cfg.status || {};
+  const corStatus = st.pronto ? "var(--ok)" : "var(--alerta)";
+  abrirModal(`
+    <h2>Configurar <span class="marca-cor">Evolution</span></h2>
+    <p class="sub">Preencha os dados da sua Evolution. Fica salvo aqui no servidor —
+       não vai para o GitHub. Cole o endereço com <code>https://</code> (pode colar
+       com <code>/manager</code> no fim que eu limpo).</p>
+    <div class="dica" style="color:${corStatus};margin-bottom:6px">● ${escapar(st.detalhe || "sem status")}</div>
+    <label class="rotulo">Endereço da Evolution</label>
+    <input id="ev-url" class="campo" style="width:100%" value="${escapar(cfg.url)}" placeholder="https://evolutionapi.seusite.com">
+    <label class="rotulo">Nome da instância (a conectada ao WhatsApp)</label>
+    <input id="ev-inst" class="campo" style="width:100%" value="${escapar(cfg.instancia)}" placeholder="WPP-VM">
+    <label class="rotulo">Chave (API key) ${cfg.tem_chave ? "— já salva, deixe em branco para manter" : ""}</label>
+    <input id="ev-key" class="campo" style="width:100%" value="" placeholder="${cfg.tem_chave ? cfg.apikey_mascarada : "cole a chave da Evolution"}">
+    <label class="rotulo">URL do webhook (o endereço público deste CRM)</label>
+    <input id="ev-webhook" class="campo" style="width:100%" value="${escapar(cfg.webhook_url)}" placeholder="http://SEU_IP:8765/webhook/evolution">
+    <div class="linha-botoes">
+      <button class="btn btn-cheio" id="ev-salvar">Salvar</button>
+      <button class="btn btn-linha" id="ev-testar">Testar conexão</button>
+      <button class="btn btn-linha" id="ev-webhook-btn">Registrar webhook</button>
+      <button class="btn" data-fechar>Fechar</button>
+    </div>`);
+
+  document.getElementById("ev-salvar").onclick = async () => {
+    const corpo = {
+      evolution_url: document.getElementById("ev-url").value,
+      evolution_instancia: document.getElementById("ev-inst").value,
+      webhook_url: document.getElementById("ev-webhook").value,
+    };
+    const key = document.getElementById("ev-key").value.trim();
+    if (key) corpo.evolution_apikey = key;
+    try {
+      const st2 = await api("/api/config/evolution", { method: "POST", body: corpo });
+      toast(st2.pronto ? "Evolution conectada! ✓" : "Salvo. " + (st2.detalhe || ""), !st2.pronto);
+      await carregar();
+      modalEvolution();
+    } catch (e) { toast(e.message, true); }
+  };
+  document.getElementById("ev-testar").onclick = async () => {
+    const st2 = await api("/api/config/evolution/testar", { method: "POST" });
+    toast(st2.pronto ? "Conexão ok ✓" : "Sem conexão: " + (st2.detalhe || ""), !st2.pronto);
+    modalEvolution();
+  };
+  document.getElementById("ev-webhook-btn").onclick = async () => {
+    try {
+      const r = await api("/api/config/evolution/webhook", { method: "POST" });
+      toast(r.ok ? "Webhook registrado ✓" : "Falhou: " + (r.detalhe || ""), !r.ok);
+    } catch (e) { toast(e.message, true); }
+  };
+}
+
 // ---- Chatwoot ----
 async function modalChatwoot() {
   const st = await api("/api/chatwoot/status");
@@ -779,6 +833,7 @@ document.getElementById("btn-seq").onclick = () => modalSequencias();
 document.getElementById("btn-etapas").onclick = modalEtapas;
 document.getElementById("btn-tags").onclick = modalTags;
 document.getElementById("btn-tarefas").onclick = modalTarefas;
+document.getElementById("btn-evolution").onclick = modalEvolution;
 document.getElementById("btn-sync").onclick = modalChatwoot;
 
 document.getElementById("btn-worker").onclick = async () => {

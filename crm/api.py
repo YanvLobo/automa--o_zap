@@ -393,6 +393,63 @@ def api_config(corpo: dict = Body(...)):
     return config.resumo()
 
 
+@app.get("/api/config/evolution")
+def api_get_evolution():
+    """Configuração atual da Evolution (a chave vem mascarada)."""
+    from .channels.evolution import _limpar_url
+    chave = db.obter_config("evolution_apikey") or config.EVOLUTION_APIKEY
+    canal = obter_canal("evolution")
+    return {
+        "url": _limpar_url(db.obter_config("evolution_url") or config.EVOLUTION_URL),
+        "instancia": db.obter_config("evolution_instancia") or config.EVOLUTION_INSTANCIA,
+        "apikey_mascarada": ("•••••••• " + chave[-4:]) if chave else "",
+        "tem_chave": bool(chave),
+        "webhook_url": db.obter_config("webhook_url") or config.WEBHOOK_URL_PUBLICA,
+        "status": canal.status(),
+    }
+
+
+@app.post("/api/config/evolution")
+def api_set_evolution(corpo: dict = Body(...)):
+    """
+    Salva a configuração da Evolution (URL, instância, chave, webhook) no banco.
+    Nada disso passa pelo GitHub — fica só aqui no servidor.
+    """
+    dados = {}
+    for campo in ("evolution_url", "evolution_instancia", "webhook_url"):
+        if corpo.get(campo) is not None:
+            dados[campo] = str(corpo[campo]).strip()
+    # A chave só é sobrescrita se você digitar uma nova (salvar sem mexer preserva).
+    if corpo.get("evolution_apikey"):
+        dados["evolution_apikey"] = str(corpo["evolution_apikey"]).strip()
+
+    if dados:
+        db.salvar_config(dados)
+    config.CANAL = "evolution"
+    limpar_cache()          # recria o canal com os novos valores
+    worker.resetar_webhook()  # tenta registrar o webhook de novo
+    return obter_canal("evolution").status()
+
+
+@app.post("/api/config/evolution/testar")
+def api_testar_evolution():
+    """Testa a conexão com a Evolution usando a configuração salva."""
+    limpar_cache()
+    return obter_canal("evolution").status()
+
+
+@app.post("/api/config/evolution/webhook")
+def api_registrar_webhook_agora():
+    """Registra o webhook na Evolution imediatamente (sem esperar o worker)."""
+    url = db.obter_config("webhook_url") or config.WEBHOOK_URL_PUBLICA
+    if not url:
+        raise HTTPException(400, "Defina a URL do webhook primeiro.")
+    resultado = obter_canal("evolution").configurar_webhook(url)
+    if resultado.get("ok"):
+        worker.resetar_webhook()
+    return resultado
+
+
 @app.post("/api/canal")
 def api_trocar_canal(corpo: dict = Body(...)):
     """Troca o canal em execução (não persiste — para persistir, edite o .env)."""

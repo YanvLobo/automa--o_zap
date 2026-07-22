@@ -1,17 +1,14 @@
-# VirtualZap CRM — conecta na SUA Evolution API já existente.
+# VirtualZap CRM — versão simples para a interface da Hostinger.
 #
-# Sobe SÓ o CRM (não sobe Evolution/Postgres/Redis, porque você já tem a Evolution
-# rodando em outro lugar). O CRM manda mensagem pela sua Evolution e recebe as
-# respostas de volta pelo webhook.
+# Sobe SÓ o CRM. Você conecta à sua Evolution DEPOIS, pelo próprio painel
+# (botão "⚙ Evolution") — então NÃO precisa preencher chave nem variável nenhuma
+# aqui. Nada de segredo passa pelo GitHub.
 #
-# Depois do deploy o painel fica em:  http://SEU_IP_DA_VPS:8765
+# Depois do deploy, abra:  http://SEU_IP_DA_VPS:8765
+# e clique em "⚙ Evolution" para colar o endereço, a instância e a chave.
 #
-# Os 4 valores abaixo (EVOLUTION_URL, EVOLUTION_INSTANCIA, EVOLUTION_APIKEY e
-# CRM_WEBHOOK_URL) precisam ser informados no deploy — pelo campo de "variáveis
-# de ambiente" da Hostinger, ou pelo arquivo deploy/.env (veja .env.crm.example).
-#
-# ⚠️ Versão de teste: painel sem senha/HTTPS. Para produção, use a versão com
-# domínio (docker-compose.prod.yml).
+# ⚠️ Versão de teste: painel sem senha/HTTPS. Para produção (com domínio, senha e
+# cadeado), use deploy/docker-compose.prod.yml.
 
 services:
   crm:
@@ -23,16 +20,6 @@ services:
       - "8765:8765"
     environment:
       CRM_CANAL: evolution
-      # Endereço da SUA Evolution (ex.: https://evolution.seusite.com)
-      EVOLUTION_URL: ${EVOLUTION_URL}
-      # Nome da instância na sua Evolution (a que está conectada ao WhatsApp)
-      EVOLUTION_INSTANCIA: ${EVOLUTION_INSTANCIA}
-      # Chave (API key) da sua Evolution
-      EVOLUTION_APIKEY: ${EVOLUTION_APIKEY}
-      EVOLUTION_VERSAO: v2
-      # Endereço público que a sua Evolution vai chamar quando chegar resposta.
-      # É o IP da VPS onde o CRM roda, ex.: http://SEU_IP_DA_VPS:8765/webhook/evolution
-      CRM_WEBHOOK_URL: ${CRM_WEBHOOK_URL}
       CRM_WORKER_AUTOSTART: "true"
       CRM_LOTE_MAXIMO: "30"
       CRM_LOTE_PAUSA_MINUTOS: "10"

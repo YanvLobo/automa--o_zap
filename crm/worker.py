@@ -32,6 +32,12 @@ _pausa_lote_ate = None
 _webhook_ok = False
 
 
+def resetar_webhook():
+    """Faz o worker tentar registrar o webhook de novo (após mudar a config)."""
+    global _webhook_ok
+    _webhook_ok = False
+
+
 def _garantir_webhook_evolution():
     """
     Registra o webhook na Evolution automaticamente, sem precisar de terminal.
@@ -40,16 +46,18 @@ def _garantir_webhook_evolution():
     global _webhook_ok
     if _webhook_ok:
         return
-    if config.CANAL != "evolution" or not config.WEBHOOK_URL_PUBLICA:
+    if config.CANAL != "evolution":
+        return
+    url_webhook = db.obter_config("webhook_url") or config.WEBHOOK_URL_PUBLICA
+    if not url_webhook:
         return
     try:
         canal = obter_canal()
         if hasattr(canal, "configurar_webhook"):
-            resultado = canal.configurar_webhook(config.WEBHOOK_URL_PUBLICA)
+            resultado = canal.configurar_webhook(url_webhook)
             if resultado.get("ok"):
                 _webhook_ok = True
-                log.info("Webhook da Evolution registrado automaticamente em %s",
-                         config.WEBHOOK_URL_PUBLICA)
+                log.info("Webhook da Evolution registrado automaticamente em %s", url_webhook)
     except Exception:
         log.debug("Webhook ainda não registrado (instância pode não estar conectada).")
 
