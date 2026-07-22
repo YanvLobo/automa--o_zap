@@ -1,0 +1,5 @@
+# Imagem do Caddy com o Caddyfile já embutido.
+# Embutir o arquivo (em vez de "montar" do disco) evita o erro de montagem que
+# acontece em alguns ambientes (como o deploy por URL da Hostinger).
+FROM caddy:2-alpine
+COPY Caddyfile /etc/caddy/Caddyfile
