@@ -28,6 +28,30 @@ _lock = threading.Lock()
 _ultimo_ciclo = {"em": None, "enviados": 0, "falhas": 0, "detalhe": "worker nunca executou"}
 # Momento (datetime) em que a pausa entre lotes termina. None = sem pausa ativa.
 _pausa_lote_ate = None
+# Já registramos o webhook da Evolution neste processo?
+_webhook_ok = False
+
+
+def _garantir_webhook_evolution():
+    """
+    Registra o webhook na Evolution automaticamente, sem precisar de terminal.
+    Tenta a cada ciclo até dar certo (a instância pode ainda não estar conectada).
+    """
+    global _webhook_ok
+    if _webhook_ok:
+        return
+    if config.CANAL != "evolution" or not config.WEBHOOK_URL_PUBLICA:
+        return
+    try:
+        canal = obter_canal()
+        if hasattr(canal, "configurar_webhook"):
+            resultado = canal.configurar_webhook(config.WEBHOOK_URL_PUBLICA)
+            if resultado.get("ok"):
+                _webhook_ok = True
+                log.info("Webhook da Evolution registrado automaticamente em %s",
+                         config.WEBHOOK_URL_PUBLICA)
+    except Exception:
+        log.debug("Webhook ainda não registrado (instância pode não estar conectada).")
 
 
 # ============================ JANELA DE HORÁRIO =============================
@@ -84,6 +108,9 @@ def executar_ciclo(forcar=False) -> dict:
         return _ultimo_ciclo
     if _pausa_lote_ate and agora_dt >= _pausa_lote_ate:
         _pausa_lote_ate = None  # pausa terminou; retoma o próximo lote
+
+    # Auto-configura o webhook da Evolution assim que a instância estiver pronta.
+    _garantir_webhook_evolution()
 
     # Automações "após X horas na etapa" — independentes da sequência de disparo.
     automacoes_rodadas = 0
