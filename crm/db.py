@@ -94,6 +94,26 @@ def normalizar_telefone(bruto: str) -> str:
     return digitos
 
 
+def variantes_telefone(bruto: str) -> list:
+    """
+    Gera as formas equivalentes de um número para casar o mesmo lead mesmo com
+    a variação do 9º dígito dos celulares brasileiros.
+
+    Ex.: 5561983269722 (com 9)  <->  556183269722 (sem 9)
+    """
+    tel = normalizar_telefone(bruto)
+    if not tel:
+        return []
+    variantes = {tel}
+    if tel.startswith("55"):
+        resto = tel[2:]                       # DDD + número (sem o DDI 55)
+        if len(resto) == 11 and resto[2] == "9":       # DDD(2) + 9 + 8 dígitos
+            variantes.add("55" + resto[:2] + resto[3:])          # remove o 9 -> 12
+        elif len(resto) == 10:                          # DDD(2) + 8 dígitos (sem 9)
+            variantes.add("55" + resto[:2] + "9" + resto[2:])    # insere o 9 -> 13
+    return list(variantes)
+
+
 def _slugificar(texto: str) -> str:
     sem_acento = "".join(
         c for c in unicodedata.normalize("NFD", (texto or "").strip().lower())
@@ -616,10 +636,16 @@ def obter_lead(lead_id: int):
 
 
 def obter_lead_por_telefone(telefone: str):
-    tel = normalizar_telefone(telefone)
+    variantes = variantes_telefone(telefone)
+    if not variantes:
+        return None
+    marcadores = ",".join("?" * len(variantes))
     with _lock, conectar() as con:
         _atualizar_cache_stages(con)
-        linha = con.execute("SELECT * FROM leads WHERE telefone = ?", (tel,)).fetchone()
+        linha = con.execute(
+            f"SELECT * FROM leads WHERE telefone IN ({marcadores}) ORDER BY id LIMIT 1",
+            variantes,
+        ).fetchone()
         return _linha_para_lead(linha, con) if linha else None
 
 
@@ -629,8 +655,12 @@ def criar_lead(nome, telefone, sequencia_id=None, etiqueta=ETIQUETA_NOVO,
     if not tel:
         raise ValueError("Telefone inválido")
     ts = agora_iso()
+    variantes = variantes_telefone(tel)
+    marcadores = ",".join("?" * len(variantes))
     with _lock, conectar() as con:
-        existente = con.execute("SELECT * FROM leads WHERE telefone = ?", (tel,)).fetchone()
+        existente = con.execute(
+            f"SELECT * FROM leads WHERE telefone IN ({marcadores}) ORDER BY id LIMIT 1", variantes
+        ).fetchone()
         if existente:
             _atualizar_cache_stages(con)
             lead = _linha_para_lead(existente, con)
