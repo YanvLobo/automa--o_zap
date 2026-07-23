@@ -21,8 +21,15 @@
     <button id="btn-etapas" class="btn btn-linha">☰ Etapas</button>
     <button id="btn-tags" class="btn btn-linha">🏷 Etiquetas</button>
     <button id="btn-tarefas" class="btn btn-linha">✔ Tarefas</button>
-    <button id="btn-evolution" class="btn btn-linha">⚙ Evolution</button>
-    <button id="btn-sync" class="btn btn-linha">🔄 Chatwoot</button>
+    <div class="menu-suspenso" id="menu-config">
+      <button id="btn-config" class="btn btn-linha">⚙ Configurações ▾</button>
+      <div class="menu-suspenso-lista oculto" id="menu-config-lista">
+        <button id="cfg-evolution">⚙ Evolution</button>
+        <button id="cfg-chatwoot">🔄 Chatwoot</button>
+        <button id="cfg-senha">🔑 Trocar senha</button>
+        <button id="cfg-sair">🚪 Sair</button>
+      </div>
+    </div>
   </div>
 </header>
 <div class="faixa"></div>
@@ -45,7 +52,11 @@
     Lote: <input id="lote-tamanho" class="campo mini-num" type="number" min="1" value="30"> msgs ·
     pausa <input id="lote-pausa" class="campo mini-num" type="number" min="0" value="10"> min
   </label>
-  <div id="filtro-tags" class="filtro-tags"></div>
+  <div class="menu-suspenso" id="menu-tags">
+    <button id="btn-filtro-tags" class="btn btn-linha">🏷 Etiquetas <span id="filtro-tags-resumo"></span> ▾</button>
+    <div class="menu-suspenso-lista oculto filtro-tags" id="filtro-tags-lista"></div>
+  </div>
+  <div id="filtro-tags-ativas" class="filtro-tags"></div>
   <span class="dica">Arraste os cards entre as colunas para mudar a etapa.</span>
   <span id="ultimo-ciclo" class="dica dir"></span>
 </section>

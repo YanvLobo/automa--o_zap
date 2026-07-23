@@ -229,6 +229,7 @@ CREATE TABLE IF NOT EXISTS stage_automations (
     acao           TEXT NOT NULL,   -- enviar_mensagem|adicionar_tag|remover_tag|mover_etapa|criar_tarefa|parar_sequencia
     texto          TEXT NOT NULL DEFAULT '',
     tag_id         INTEGER,
+    tag_filtro_id  INTEGER,  -- se definido, a automação só roda para leads com esta etiqueta
     etapa_destino  TEXT NOT NULL DEFAULT '',
     ativa          INTEGER NOT NULL DEFAULT 1,
     criado_em      TEXT NOT NULL
@@ -306,6 +307,9 @@ def _migrar(con) -> None:
                 con.execute(f"ALTER TABLE leads ADD COLUMN {coluna} {tipo}")
         if "chatwoot_msg_id" not in _colunas(con, "mensagens"):
             con.execute("ALTER TABLE mensagens ADD COLUMN chatwoot_msg_id INTEGER")
+    if "stage_automations" in {t["name"] for t in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}:
+        if "tag_filtro_id" not in _colunas(con, "stage_automations"):
+            con.execute("ALTER TABLE stage_automations ADD COLUMN tag_filtro_id INTEGER")
 
 
 def _seed_stages(con) -> None:
@@ -831,7 +835,8 @@ def listar_automacoes(stage_id=None) -> list:
 
 def salvar_automacao(dados: dict) -> dict:
     ts = agora_iso()
-    campos = ("stage_id", "gatilho", "horas", "acao", "texto", "tag_id", "etapa_destino", "ativa", "ordem")
+    campos = ("stage_id", "gatilho", "horas", "acao", "texto", "tag_id", "tag_filtro_id",
+              "etapa_destino", "ativa", "ordem")
     with _lock, conectar() as con:
         if dados.get("id"):
             sets = ", ".join(f"{c} = ?" for c in campos)
@@ -841,9 +846,9 @@ def salvar_automacao(dados: dict) -> dict:
         else:
             cur = con.execute(
                 "INSERT INTO stage_automations (stage_id, gatilho, horas, acao, texto, tag_id, "
-                "etapa_destino, ativa, ordem, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                "tag_filtro_id, etapa_destino, ativa, ordem, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                 (dados.get("stage_id"), dados.get("gatilho", "ao_entrar"), float(dados.get("horas") or 0),
-                 dados.get("acao"), dados.get("texto", ""), dados.get("tag_id"),
+                 dados.get("acao"), dados.get("texto", ""), dados.get("tag_id"), dados.get("tag_filtro_id"),
                  dados.get("etapa_destino", ""), 1 if dados.get("ativa", True) else 0,
                  int(dados.get("ordem") or 0), ts),
             )
@@ -851,6 +856,13 @@ def salvar_automacao(dados: dict) -> dict:
         con.commit()
         linha = con.execute("SELECT * FROM stage_automations WHERE id = ?", (aid,)).fetchone()
     return dict(linha)
+
+
+def lead_tem_tag(lead_id: int, tag_id: int) -> bool:
+    with _lock, conectar() as con:
+        return con.execute(
+            "SELECT 1 FROM lead_tags WHERE lead_id = ? AND tag_id = ?", (lead_id, tag_id)
+        ).fetchone() is not None
 
 
 def remover_automacao(automation_id: int) -> None:

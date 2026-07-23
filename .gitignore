@@ -6,6 +6,9 @@ optout_extra.txt
 # Dados pessoais (telefones de envios antigos)
 PyWhatKit_DB.txt
 
+# Resumo com dados de infraestrutura (não publicar)
+RESUMO_PROJETO.md
+
 # Banco de dados do CRM
 crm_leads.db
 crm_leads.db-wal

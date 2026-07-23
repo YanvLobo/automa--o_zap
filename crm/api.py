@@ -16,10 +16,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, Header, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import chatwoot, config, db, optout, regras, worker
+from . import auth, chatwoot, config, db, optout, regras, worker
 from .channels import evolution as evo
 from .channels import limpar_cache, obter_canal
 
@@ -65,6 +65,87 @@ async def ciclo_de_vida(_app: FastAPI):
 
 app = FastAPI(title="VirtualZap CRM", version="1.0.0",
               docs_url="/api/docs", lifespan=ciclo_de_vida)
+
+
+# ================================= LOGIN ====================================
+# Rotas e caminhos que continuam acessíveis sem sessão: a própria tela de login,
+# as chamadas de autenticação, os arquivos estáticos (a tela de login precisa
+# deles) e o webhook da Evolution (protegido pelo próprio token, não por login).
+_CAMINHOS_LIVRES = {"/login", "/api/auth/status", "/api/auth/login",
+                    "/api/auth/configurar", "/webhook/evolution"}
+_PREFIXOS_LIVRES = ("/static/",)
+
+
+@app.middleware("http")
+async def exigir_login(request: Request, call_next):
+    caminho = request.url.path
+    if caminho in _CAMINHOS_LIVRES or caminho.startswith(_PREFIXOS_LIVRES):
+        return await call_next(request)
+    if not auth.configurado():
+        # Instalação nova: ainda não há usuário/senha definidos — libera tudo
+        # até que o primeiro login seja configurado pela tela de login.
+        return await call_next(request)
+    if auth.sessao_valida(request.cookies.get(auth.COOKIE)):
+        return await call_next(request)
+    if caminho.startswith("/api/"):
+        return JSONResponse({"detail": "Não autenticado"}, status_code=401)
+    return RedirectResponse("/login")
+
+
+@app.get("/login", include_in_schema=False)
+def pagina_login():
+    return FileResponse(ESTATICOS / "login.html")
+
+
+@app.get("/api/auth/status")
+def api_auth_status(request: Request):
+    return {
+        "configurado": auth.configurado(),
+        "logado": auth.sessao_valida(request.cookies.get(auth.COOKIE)),
+    }
+
+
+@app.post("/api/auth/configurar")
+def api_auth_configurar(corpo: dict = Body(...)):
+    """Primeiro acesso: define usuário/senha. Só funciona enquanto não houver login."""
+    if auth.configurado():
+        raise HTTPException(400, "Já existe um login configurado.")
+    usuario = (corpo.get("usuario") or "").strip()
+    senha = corpo.get("senha") or ""
+    if not usuario or len(senha) < 6:
+        raise HTTPException(400, "Informe usuário e senha (mínimo 6 caracteres).")
+    auth.definir_credenciais(usuario, senha)
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+def api_auth_login(corpo: dict = Body(...)):
+    if not auth.verificar_login(corpo.get("usuario", ""), corpo.get("senha", "")):
+        raise HTTPException(401, "Usuário ou senha inválidos.")
+    token = auth.criar_sessao()
+    resposta = JSONResponse({"ok": True})
+    resposta.set_cookie(auth.COOKIE, token, httponly=True, samesite="lax",
+                        max_age=60 * 60 * 24 * 30)
+    return resposta
+
+
+@app.post("/api/auth/logout")
+def api_auth_logout(request: Request):
+    auth.encerrar_sessao(request.cookies.get(auth.COOKIE))
+    resposta = JSONResponse({"ok": True})
+    resposta.delete_cookie(auth.COOKIE)
+    return resposta
+
+
+@app.post("/api/auth/trocar-senha")
+def api_auth_trocar_senha(corpo: dict = Body(...)):
+    """Troca usuário/senha. Só é alcançável já logado (o middleware garante isso)."""
+    usuario = (corpo.get("usuario") or db.obter_config("auth_usuario")).strip()
+    senha = corpo.get("senha") or ""
+    if len(senha) < 6:
+        raise HTTPException(400, "A senha deve ter ao menos 6 caracteres.")
+    auth.definir_credenciais(usuario, senha)
+    return {"ok": True}
 
 
 # ================================= PAINEL ===================================

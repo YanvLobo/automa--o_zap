@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VirtualZap CRM — Login</title>
+<link rel="stylesheet" href="/static/painel.css">
+<style>
+  body { display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .caixa-login { width:100%; max-width:340px; padding:28px; border:1px solid var(--borda,#333);
+                 border-radius:12px; display:flex; flex-direction:column; gap:14px; }
+  .caixa-login h1 { font-size:1.1rem; margin:0 0 4px; }
+  .caixa-login .sub { margin:0 0 8px; opacity:.75; font-size:.9rem; }
+  .caixa-login .erro { color:#e5252e; font-size:.85rem; min-height:1.1em; }
+</style>
+</head>
+<body>
+
+<form class="caixa-login" id="form-login">
+  <div class="marca"><span class="v">Virtual</span><span class="z">Zap</span> <em>CRM</em></div>
+  <h1 id="titulo">Entrar</h1>
+  <p class="sub" id="subtitulo">Informe seu usuário e senha para acessar o painel.</p>
+  <input class="campo" id="usuario" placeholder="Usuário" autocomplete="username" required>
+  <input class="campo" id="senha" type="password" placeholder="Senha" autocomplete="current-password" required>
+  <div class="erro" id="erro"></div>
+  <button class="btn btn-cheio" type="submit" id="btn-enviar">Entrar</button>
+</form>
+
+<script>
+async function api(rota, opcoes = {}) {
+  const resposta = await fetch(rota, {
+    headers: { "Content-Type": "application/json" },
+    ...opcoes,
+    body: opcoes.body ? JSON.stringify(opcoes.body) : undefined,
+  });
+  const dados = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new Error(dados.detail || `Erro ${resposta.status}`);
+  return dados;
+}
+
+let modoConfigurar = false;
+
+async function iniciar() {
+  const status = await api("/api/auth/status");
+  if (status.logado) { location.href = "/"; return; }
+  modoConfigurar = !status.configurado;
+  if (modoConfigurar) {
+    document.getElementById("titulo").textContent = "Criar login";
+    document.getElementById("subtitulo").textContent =
+      "Primeiro acesso: defina o usuário e a senha que vão proteger o painel.";
+    document.getElementById("btn-enviar").textContent = "Criar login";
+    document.getElementById("senha").setAttribute("minlength", "6");
+    document.getElementById("senha").placeholder = "Senha (mínimo 6 caracteres)";
+  }
+}
+
+document.getElementById("form-login").onsubmit = async (e) => {
+  e.preventDefault();
+  const usuario = document.getElementById("usuario").value.trim();
+  const senha = document.getElementById("senha").value;
+  const erroEl = document.getElementById("erro");
+  erroEl.textContent = "";
+  try {
+    if (modoConfigurar) {
+      await api("/api/auth/configurar", { method: "POST", body: { usuario, senha } });
+    }
+    await api("/api/auth/login", { method: "POST", body: { usuario, senha } });
+    location.href = "/";
+  } catch (erro) {
+    erroEl.textContent = erro.message;
+  }
+};
+
+iniciar();
+</script>
+</body>
+</html>

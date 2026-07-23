@@ -91,9 +91,16 @@ def _executar(lead_id: int, automacao: dict, profundidade: int) -> None:
         log.exception("Erro ao executar automação %s (ação %s)", automacao.get("id"), acao)
 
 
+def _passa_no_filtro(lead_id: int, automacao: dict) -> bool:
+    """Se a automação tem uma etiqueta de filtro, só roda para leads que a possuem."""
+    filtro = automacao.get("tag_filtro_id")
+    return not filtro or db.lead_tem_tag(lead_id, filtro)
+
+
 def ao_entrar(lead_id: int, slug: str, profundidade: int = 0) -> int:
     """Executa as automações 'ao_entrar' da etapa. Retorna quantas rodaram."""
-    automacoes = db.automacoes_por_slug(slug, "ao_entrar")
+    automacoes = [a for a in db.automacoes_por_slug(slug, "ao_entrar")
+                  if _passa_no_filtro(lead_id, a)]
     for a in automacoes:
         _executar(lead_id, a, profundidade)
     return len(automacoes)
@@ -116,6 +123,8 @@ def processar_tempo() -> int:
             if horas_na_etapa < float(a["horas"]):
                 continue
             if db.automacao_ja_executada(lead["id"], a["id"], lead.get("stage_desde")):
+                continue
+            if not _passa_no_filtro(lead["id"], a):
                 continue
             _executar(lead["id"], a, 0)
             db.marcar_automacao_executada(lead["id"], a["id"])

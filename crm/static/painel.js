@@ -150,28 +150,43 @@ function desenharMetricas() {
 // ----------------------------- filtro por tags ----------------------------
 
 function desenharFiltroTags() {
-  const box = document.getElementById("filtro-tags");
-  if (!estado.tags.length) { box.innerHTML = ""; return; }
-  const modoBtn = `<span class="pilula" id="pilula-modo" title="Alternar E / OU">
-      modo: ${estado.modoTags === "e" ? "TODAS" : "QUALQUER"}</span>`;
-  const pilulas = estado.tags.map((t) => `
+  const dropdown = document.getElementById("filtro-tags-lista");
+  const ativas = document.getElementById("filtro-tags-ativas");
+  const resumo = document.getElementById("filtro-tags-resumo");
+  if (!estado.tags.length) { dropdown.innerHTML = ""; ativas.innerHTML = ""; resumo.textContent = ""; return; }
+
+  resumo.textContent = estado.filtroTags.size ? `(${estado.filtroTags.size})` : "";
+
+  // Dropdown: todas as etiquetas disponíveis, pra escolher o filtro.
+  dropdown.innerHTML = estado.tags.map((t) => `
     <span class="pilula ${estado.filtroTags.has(t.id) ? "ativa" : ""}" data-tag="${t.id}">
       <span class="ponto" style="background:${t.cor}"></span>${escapar(t.nome)} (${t.total})
     </span>`).join("");
-  const limpar = estado.filtroTags.size ? `<span class="pilula" id="pilula-limpar">✕ limpar</span>` : "";
-  box.innerHTML = pilulas + modoBtn + limpar;
-
-  box.querySelectorAll("[data-tag]").forEach((el) => {
+  dropdown.querySelectorAll("[data-tag]").forEach((el) => {
     el.onclick = () => {
       const id = Number(el.dataset.tag);
       estado.filtroTags.has(id) ? estado.filtroTags.delete(id) : estado.filtroTags.add(id);
       carregar();
     };
   });
-  const modo = document.getElementById("pilula-modo");
-  if (modo) modo.onclick = () => { estado.modoTags = estado.modoTags === "e" ? "ou" : "e"; carregar(); };
-  const limparEl = document.getElementById("pilula-limpar");
-  if (limparEl) limparEl.onclick = () => { estado.filtroTags.clear(); carregar(); };
+
+  // Linha visível: só as etiquetas ativas no filtro + modo + limpar.
+  if (!estado.filtroTags.size) { ativas.innerHTML = ""; return; }
+  const tagsAtivas = estado.tags.filter((t) => estado.filtroTags.has(t.id)).map((t) => `
+    <span class="pilula ativa" data-tag="${t.id}">
+      <span class="ponto" style="background:${t.cor}"></span>${escapar(t.nome)} ✕
+    </span>`).join("");
+  const modoBtn = `<span class="pilula" id="pilula-modo" title="Alternar E / OU">
+      modo: ${estado.modoTags === "e" ? "TODAS" : "QUALQUER"}</span>`;
+  ativas.innerHTML = tagsAtivas + modoBtn + `<span class="pilula" id="pilula-limpar">✕ limpar</span>`;
+
+  ativas.querySelectorAll("[data-tag]").forEach((el) => {
+    el.onclick = () => { estado.filtroTags.delete(Number(el.dataset.tag)); carregar(); };
+  });
+  document.getElementById("pilula-modo").onclick = () => {
+    estado.modoTags = estado.modoTags === "e" ? "ou" : "e"; carregar();
+  };
+  document.getElementById("pilula-limpar").onclick = () => { estado.filtroTags.clear(); carregar(); };
 }
 
 // -------------------------------- kanban ----------------------------------
@@ -813,6 +828,13 @@ async function modalAutomacoes() {
       <input class="mini cresce" id="au-texto" placeholder="Texto da mensagem / título da tarefa (use {nome})">
       <select class="mini" id="au-tag">${estado.tags.map((t) => `<option value="${t.id}">${escapar(t.nome)}</option>`).join("") || "<option value=''>—</option>"}</select>
       <select class="mini" id="au-destino">${opcoesStage()}</select>
+    </div>
+    <div class="item-lista" style="flex-wrap:wrap">
+      <span class="dica">Só rodar para leads com a etiqueta:</span>
+      <select class="mini" id="au-tag-filtro">
+        <option value="">— qualquer lead da etapa —</option>
+        ${estado.tags.map((t) => `<option value="${t.id}">${escapar(t.nome)}</option>`).join("")}
+      </select>
       <button class="btn btn-cheio btn-pequeno" id="btn-nova-auto">+ criar</button>
     </div>
     <div class="linha-botoes"><button class="btn" id="au-voltar">← Sequências</button>
@@ -833,6 +855,7 @@ async function modalAutomacoes() {
         acao: document.getElementById("au-acao").value,
         texto: document.getElementById("au-texto").value,
         tag_id: Number(document.getElementById("au-tag").value) || null,
+        tag_filtro_id: Number(document.getElementById("au-tag-filtro").value) || null,
         etapa_destino: document.getElementById("au-destino").value } });
       toast("Automação criada."); modalAutomacoes();
     } catch (e) { toast(e.message, true); }
@@ -840,16 +863,18 @@ async function modalAutomacoes() {
 }
 
 function descreverAutomacao(a) {
+  const nomeTag = (id) => estado.tags.find((t) => t.id === id)?.nome || `#${id}`;
   const quando = a.gatilho === "apos_horas" ? `após ${a.horas}h` : "ao entrar";
   const mapa = {
     enviar_mensagem: `enviar: “${(a.texto || "").slice(0, 40)}”`,
-    adicionar_tag: `adicionar etiqueta #${a.tag_id}`,
-    remover_tag: `remover etiqueta #${a.tag_id}`,
+    adicionar_tag: `adicionar etiqueta ${nomeTag(a.tag_id)}`,
+    remover_tag: `remover etiqueta ${nomeTag(a.tag_id)}`,
     mover_etapa: `mover para "${a.etapa_destino}"`,
     criar_tarefa: `criar tarefa: “${(a.texto || "").slice(0, 40)}”`,
     parar_sequencia: "parar a sequência",
   };
-  return `${quando} → ${mapa[a.acao] || a.acao}`;
+  const filtro = a.tag_filtro_id ? ` (só com ${nomeTag(a.tag_filtro_id)})` : "";
+  return `${quando} → ${mapa[a.acao] || a.acao}${filtro}`;
 }
 
 // -------------------------------- eventos ---------------------------------
@@ -859,14 +884,78 @@ document.getElementById("btn-seq").onclick = () => modalSequencias();
 document.getElementById("btn-etapas").onclick = modalEtapas;
 document.getElementById("btn-tags").onclick = modalTags;
 document.getElementById("btn-tarefas").onclick = modalTarefas;
-document.getElementById("btn-evolution").onclick = modalEvolution;
-document.getElementById("btn-sync").onclick = modalChatwoot;
+document.getElementById("btn-config").onclick = (e) => {
+  e.stopPropagation();
+  document.getElementById("filtro-tags-lista").classList.add("oculto");
+  document.getElementById("menu-config-lista").classList.toggle("oculto");
+};
+document.getElementById("btn-filtro-tags").onclick = (e) => {
+  e.stopPropagation();
+  document.getElementById("menu-config-lista").classList.add("oculto");
+  document.getElementById("filtro-tags-lista").classList.toggle("oculto");
+};
+document.addEventListener("click", (e) => {
+  if (!document.getElementById("menu-config").contains(e.target)) {
+    document.getElementById("menu-config-lista").classList.add("oculto");
+  }
+  if (!document.getElementById("menu-tags").contains(e.target)) {
+    document.getElementById("filtro-tags-lista").classList.add("oculto");
+  }
+});
+function fecharMenuConfig() { document.getElementById("menu-config-lista").classList.add("oculto"); }
+
+document.getElementById("cfg-evolution").onclick = () => { fecharMenuConfig(); modalEvolution(); };
+document.getElementById("cfg-chatwoot").onclick = () => { fecharMenuConfig(); modalChatwoot(); };
+document.getElementById("cfg-senha").onclick = () => { fecharMenuConfig(); modalSenha(); };
+document.getElementById("cfg-sair").onclick = async () => {
+  fecharMenuConfig();
+  await api("/api/auth/logout", { method: "POST" });
+  location.href = "/login";
+};
+
+async function modalSenha() {
+  abrirModal(`
+    <h2>Trocar <span class="marca-cor">senha</span></h2>
+    <p class="sub">Vale para todo mundo que acessa o painel. Depois de salvar,
+       será preciso entrar de novo.</p>
+    <label class="rotulo">Usuário (deixe em branco para manter o atual)</label>
+    <input id="sn-usuario" class="campo" style="width:100%" placeholder="usuário de login">
+    <label class="rotulo">Nova senha (mínimo 6 caracteres)</label>
+    <input id="sn-senha" type="password" class="campo" style="width:100%" placeholder="nova senha">
+    <label class="rotulo">Confirmar nova senha</label>
+    <input id="sn-senha2" type="password" class="campo" style="width:100%" placeholder="repita a nova senha">
+    <div class="erro" id="sn-erro" style="color:var(--alerta,#e5252e);font-size:.85rem;min-height:1.1em"></div>
+    <div class="linha-botoes">
+      <button class="btn btn-cheio" id="sn-salvar">Salvar</button>
+      <button class="btn" data-fechar>Cancelar</button>
+    </div>`);
+
+  document.getElementById("sn-salvar").onclick = async () => {
+    const usuario = document.getElementById("sn-usuario").value.trim();
+    const senha = document.getElementById("sn-senha").value;
+    const senha2 = document.getElementById("sn-senha2").value;
+    const erroEl = document.getElementById("sn-erro");
+    erroEl.textContent = "";
+    if (senha.length < 6) { erroEl.textContent = "A senha deve ter ao menos 6 caracteres."; return; }
+    if (senha !== senha2) { erroEl.textContent = "As senhas não coincidem."; return; }
+    try {
+      await api("/api/auth/trocar-senha", { method: "POST", body: { usuario: usuario || undefined, senha } });
+      toast("Senha alterada. Faça login de novo.");
+      setTimeout(() => { location.href = "/login"; }, 1200);
+    } catch (e) { erroEl.textContent = e.message; }
+  };
+}
 
 document.getElementById("btn-worker").onclick = async () => {
   const rodando = estado.status.worker.rodando;
-  await api(`/api/worker/${rodando ? "parar" : "iniciar"}`, { method: "POST" });
-  toast(rodando ? "Funil automático parado." : "Funil automático ligado.");
-  await carregar();
+  try {
+    await api(`/api/worker/${rodando ? "parar" : "iniciar"}`, { method: "POST" });
+    toast(rodando ? "Funil automático parado." : "Funil automático ligado.");
+  } catch (erro) {
+    toast(erro.message, true);
+  } finally {
+    await carregar();
+  }
 };
 
 document.getElementById("btn-ciclo").onclick = async (e) => {
