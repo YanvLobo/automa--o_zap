@@ -34,9 +34,10 @@ class ChatwootErro(Exception):
 
 class ChatwootCliente:
     def __init__(self, url=None, conta=None, apikey=None):
-        self.url = (url or config.CHATWOOT_URL).rstrip("/")
-        self.conta = conta or config.CHATWOOT_ACCOUNT_ID
-        self.apikey = apikey or config.CHATWOOT_API_KEY
+        # Prioridade: argumento > configuração salva no painel (banco) > .env
+        self.url = (url or db.obter_config("chatwoot_url") or config.CHATWOOT_URL).rstrip("/")
+        self.conta = conta or db.obter_config("chatwoot_account_id") or config.CHATWOOT_ACCOUNT_ID
+        self.apikey = apikey or db.obter_config("chatwoot_api_key") or config.CHATWOOT_API_KEY
         self._cliente = httpx.Client(
             timeout=30,
             headers={"api_access_token": self.apikey, "Content-Type": "application/json"},
@@ -293,6 +294,11 @@ def _sync_mensagens(cliente, lead, conv_id, resumo):
 
 
 # =============================== STATUS ====================================
+
+def esta_configurado() -> bool:
+    """Considera tanto o .env quanto a configuração salva no painel."""
+    return ChatwootCliente().configurado
+
 
 def status() -> dict:
     cliente = ChatwootCliente()

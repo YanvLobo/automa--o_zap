@@ -45,7 +45,7 @@ async def ciclo_de_vida(_app: FastAPI):
         log.info("Worker iniciado automaticamente (CRM_WORKER_AUTOSTART=1).")
 
     # Sincronização periódica com o Chatwoot (opcional).
-    if config.chatwoot_configurado() and config.CHATWOOT_SYNC_MINUTOS > 0:
+    if chatwoot.esta_configurado() and config.CHATWOOT_SYNC_MINUTOS > 0:
         from apscheduler.schedulers.background import BackgroundScheduler
         _sync_scheduler = BackgroundScheduler(timezone=None)
         _sync_scheduler.add_job(
@@ -338,11 +338,38 @@ def api_chatwoot_status():
     return chatwoot.status()
 
 
+@app.get("/api/config/chatwoot")
+def api_get_chatwoot():
+    chave = db.obter_config("chatwoot_api_key") or config.CHATWOOT_API_KEY
+    return {
+        "url": db.obter_config("chatwoot_url") or config.CHATWOOT_URL,
+        "account_id": db.obter_config("chatwoot_account_id") or config.CHATWOOT_ACCOUNT_ID,
+        "apikey_mascarada": ("•••••••• " + chave[-4:]) if chave else "",
+        "tem_chave": bool(chave),
+        "status": chatwoot.status(),
+    }
+
+
+@app.post("/api/config/chatwoot")
+def api_set_chatwoot(corpo: dict = Body(...)):
+    """Salva a configuração do Chatwoot no banco (não passa pelo GitHub)."""
+    dados = {}
+    if corpo.get("url") is not None:
+        dados["chatwoot_url"] = str(corpo["url"]).strip()
+    if corpo.get("account_id") is not None:
+        dados["chatwoot_account_id"] = str(corpo["account_id"]).strip()
+    if corpo.get("api_key"):
+        dados["chatwoot_api_key"] = str(corpo["api_key"]).strip()
+    if dados:
+        db.salvar_config(dados)
+    return chatwoot.status()
+
+
 @app.post("/api/chatwoot/sync")
 def api_chatwoot_sync(corpo: dict = Body(default={})):
-    if not config.chatwoot_configurado():
-        raise HTTPException(400, "Chatwoot não configurado. Preencha CHATWOOT_URL, "
-                                 "CHATWOOT_ACCOUNT_ID e CHATWOOT_API_KEY no .env.")
+    if not chatwoot.esta_configurado():
+        raise HTTPException(400, "Chatwoot não configurado. Use o botão 🔄 Chatwoot "
+                                 "no painel para preencher endereço, conta e chave.")
     return chatwoot.sincronizar(max_paginas=int(corpo.get("max_paginas", 20)))
 
 
@@ -356,7 +383,7 @@ def api_status():
         "canal": canal.status(),
         "worker": worker.estado(),
         "estatisticas": db.estatisticas(),
-        "chatwoot_configurado": config.chatwoot_configurado(),
+        "chatwoot_configurado": chatwoot.esta_configurado(),
     }
 
 

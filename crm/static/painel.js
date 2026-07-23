@@ -653,22 +653,48 @@ async function modalEvolution() {
   };
 }
 
-// ---- Chatwoot ----
+// ---- Chatwoot (configuração + sincronização, sem terminal) ----
 async function modalChatwoot() {
-  const st = await api("/api/chatwoot/status");
+  const cfg = await api("/api/config/chatwoot");
+  const st = cfg.status || {};
+  const corStatus = st.ok ? "var(--ok)" : "var(--alerta)";
   abrirModal(`
-    <h2>Sincronizar <span class="marca-cor">Chatwoot</span></h2>
-    <p class="sub">${st.configurado
-      ? `Conta <b>${escapar(st.conta)}</b> em ${escapar(st.url)}. ${st.ok ? "✅ " : "⚠ "}${escapar(st.detalhe || "")}`
-      : "Chatwoot ainda não configurado. Preencha <code>CHATWOOT_URL</code>, <code>CHATWOOT_ACCOUNT_ID</code> e <code>CHATWOOT_API_KEY</code> no arquivo <code>.env</code> e reinicie."}</p>
-    ${st.ultimo_run ? `<div class="dica">Última sincronização: ${dataCurta(st.ultimo_run)}</div>` : ""}
-    <p class="sub">Traz contatos, conversas, mensagens e etiquetas — de forma incremental, sem duplicar.
-       Quem respondeu no Chatwoot passa pelas mesmas regras (opt-out / atendimento manual).</p>
+    <h2>Configurar <span class="marca-cor">Chatwoot</span></h2>
+    <p class="sub">Preencha os dados do seu Chatwoot. Fica salvo aqui no servidor —
+       não vai para o GitHub. A chave (token) você pega no Chatwoot em
+       Perfil → Access Token.</p>
+    <div class="dica" style="color:${corStatus};margin-bottom:6px">● ${escapar(st.detalhe || "sem status")}</div>
+    <label class="rotulo">Endereço do Chatwoot</label>
+    <input id="cw-url" class="campo" style="width:100%" value="${escapar(cfg.url)}" placeholder="https://app.chatwoot.com ou seu domínio">
+    <label class="rotulo">ID da conta (Account ID)</label>
+    <input id="cw-conta" class="campo" style="width:100%" value="${escapar(cfg.account_id)}" placeholder="1">
+    <label class="rotulo">Token de acesso ${cfg.tem_chave ? "— já salvo, deixe em branco para manter" : ""}</label>
+    <input id="cw-key" class="campo" style="width:100%" value="" placeholder="${cfg.tem_chave ? cfg.apikey_mascarada : "cole o access token"}">
+    ${st.ultimo_run ? `<div class="dica" style="margin-top:8px">Última sincronização: ${dataCurta(st.ultimo_run)}</div>` : ""}
+    <p class="sub" style="margin-top:12px">A sincronização traz contatos, conversas, mensagens e etiquetas —
+       incremental, sem duplicar. Quem respondeu no Chatwoot passa pelas mesmas regras.</p>
     <div class="linha-botoes">
-      ${st.configurado ? `<button class="btn btn-cheio" id="btn-rodar-sync">🔄 Sincronizar agora</button>` : ""}
+      <button class="btn btn-cheio" id="cw-salvar">Salvar</button>
+      <button class="btn btn-linha" id="cw-sync" ${st.ok ? "" : "disabled"}>🔄 Sincronizar agora</button>
       <button class="btn" data-fechar>Fechar</button>
     </div>`);
-  const b = document.getElementById("btn-rodar-sync");
+
+  document.getElementById("cw-salvar").onclick = async () => {
+    const corpo = {
+      url: document.getElementById("cw-url").value,
+      account_id: document.getElementById("cw-conta").value,
+    };
+    const key = document.getElementById("cw-key").value.trim();
+    if (key) corpo.api_key = key;
+    try {
+      const st2 = await api("/api/config/chatwoot", { method: "POST", body: corpo });
+      toast(st2.ok ? "Chatwoot conectado! ✓" : "Salvo. " + (st2.detalhe || ""), !st2.ok);
+      await carregar();
+      modalChatwoot();
+    } catch (e) { toast(e.message, true); }
+  };
+
+  const b = document.getElementById("cw-sync");
   if (b) b.onclick = async () => {
     b.disabled = true; b.textContent = "sincronizando…";
     try {
